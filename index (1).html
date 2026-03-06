@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NubScope – AI 태아 성별 예측</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --rose:#f43f5e;--rose-l:#fb7185;--rose-ll:#fda4af;--rose-pale:#fecdd3;
+  --blush:#fff1f2;--blush2:#fdf2f4;--cream:#fffafb;--white:#fff;
+  --ink:#1c0a0f;--ink2:#4a1525;--ink3:#7c3248;
+  --muted:#b07080;--muted2:#d4a0ae;--bdr:#f3c0c8;--bdr2:#fde4e8;
+  --sh:rgba(244,63,94,.14);--sh2:rgba(28,10,15,.07);
+  --ff:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+html,body{min-height:100%;background:var(--cream);color:var(--ink);font-family:var(--ff);overflow-x:hidden}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--rose-pale);border-radius:2px}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 55% 45% at 8% 0%,rgba(251,113,133,.13) 0%,transparent 60%),
+             radial-gradient(ellipse 45% 38% at 95% 100%,rgba(244,63,94,.1) 0%,transparent 55%)}
+.petal{position:fixed;pointer-events:none;z-index:0;border-radius:62% 38% 70% 30%/50% 60% 40% 50%}
+.p1{width:180px;height:180px;top:-40px;right:6%;background:linear-gradient(130deg,rgba(254,205,211,.55),rgba(253,164,175,.3));filter:blur(2px);transform:rotate(20deg)}
+.p2{width:110px;height:110px;bottom:14%;left:-20px;background:linear-gradient(130deg,rgba(253,164,175,.4),rgba(244,63,94,.07));filter:blur(3px);transform:rotate(-12deg)}
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;
+  background:rgba(255,255,255,.88);border-bottom:1px solid var(--bdr2);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  position:sticky;top:0;z-index:200;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-icon{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--rose),var(--rose-l));
+  display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 4px 12px var(--sh)}
+.logo-name{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.03em}
+.logo-name b{color:var(--rose)}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:.05em;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.key-badge{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;
+  border:1.5px solid var(--bdr);background:var(--white);font-size:12px;font-weight:500;
+  color:var(--muted);cursor:pointer;box-shadow:0 2px 8px var(--sh2);transition:all .2s;white-space:nowrap}
+.key-badge:hover{border-color:var(--rose-l);color:var(--rose)}
+.key-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;flex-shrink:0}
+.key-dot.ok{background:#22c55e}
+.lang-wrap{position:relative}
+.lang-btn{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;
+  border:1.5px solid var(--bdr);background:var(--white);color:var(--ink2);
+  font-family:var(--ff);font-size:12px;font-weight:500;cursor:pointer;
+  box-shadow:0 2px 8px var(--sh2);transition:all .2s}
+.lang-btn:hover{border-color:var(--rose-l)}
+.lang-btn .chev{transition:transform .25s;width:12px;height:12px;flex-shrink:0}
+.lang-btn.open .chev{transform:rotate(180deg)}
+.lang-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:185px;
+  background:var(--white);border:1.5px solid var(--bdr);border-radius:18px;
+  box-shadow:0 16px 48px rgba(244,63,94,.13),0 4px 16px var(--sh2);
+  overflow:hidden;z-index:300;
+  opacity:0;transform:translateY(-6px) scale(.97);pointer-events:none;
+  transition:all .2s cubic-bezier(.16,1,.3,1)}
+.lang-menu.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.lang-menu-hd{padding:11px 15px 7px;font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--bdr2)}
+.lang-opt{display:flex;align-items:center;gap:9px;padding:10px 15px;border:none;
+  background:none;width:100%;text-align:left;font-family:var(--ff);
+  font-size:13px;color:var(--ink2);cursor:pointer;transition:background .12s}
+.lang-opt:hover{background:var(--blush)}
+.lang-opt.active{background:var(--blush2);color:var(--rose);font-weight:600}
+.lang-opt .ck{margin-left:auto;opacity:0;color:var(--rose);width:13px;height:13px}
+.lang-opt.active .ck{opacity:1}
+
+/* MAIN */
+main{flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:28px 18px 20px;max-width:480px;margin:0 auto;width:100%}
+.tabs{display:flex;gap:3px;width:100%;margin-bottom:24px;
+  background:var(--white);border:1.5px solid var(--bdr);border-radius:99px;
+  padding:4px;box-shadow:0 2px 10px var(--sh2)}
+.tab{flex:1;padding:8px 6px;border-radius:99px;border:none;background:transparent;
+  font-family:var(--ff);font-size:11.5px;font-weight:500;color:var(--muted);
+  cursor:pointer;transition:all .22s;white-space:nowrap}
+.tab.active{background:linear-gradient(135deg,var(--rose),var(--rose-l));
+  color:#fff;font-weight:700;box-shadow:0 3px 12px var(--sh)}
+
+/* ONBOARDING */
+#v-onboard{width:100%;display:none;flex-direction:column;gap:16px;
+  animation:riseIn .55s cubic-bezier(.16,1,.3,1) both}
+.ob-card{background:var(--white);border-radius:24px;border:1.5px solid var(--bdr2);
+  padding:26px 22px;box-shadow:0 4px 28px var(--sh2)}
+.ob-icon{width:68px;height:68px;border-radius:20px;
+  background:linear-gradient(135deg,var(--rose),var(--rose-l));
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  margin:0 auto 14px;box-shadow:0 8px 24px var(--sh)}
+.ob-title{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.03em;
+  text-align:center;margin-bottom:7px}
+.ob-desc{font-size:13px;color:var(--muted);line-height:1.65;text-align:center;margin-bottom:24px}
+.ob-lbl{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:5px}
+.ob-hint{font-size:11.5px;color:var(--muted);line-height:1.65;margin-bottom:14px}
+.ob-hint a{color:var(--rose);font-weight:600;text-decoration:none}
+.ob-input{width:100%;padding:13px 16px;border-radius:14px;border:1.5px solid var(--bdr);
+  font-family:var(--ff);font-size:13px;color:var(--ink);outline:none;
+  background:var(--blush2);margin-bottom:10px;transition:border-color .2s}
+.ob-input:focus{border-color:var(--rose);background:var(--white)}
+.ob-err{color:var(--rose);font-size:12px;margin-bottom:10px;display:none;font-weight:500}
+.ob-submit{width:100%;padding:14px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,var(--rose),var(--rose-l));
+  color:#fff;font-family:var(--ff);font-size:14px;font-weight:700;
+  cursor:pointer;box-shadow:0 4px 18px var(--sh);transition:all .2s}
+.ob-submit:hover{box-shadow:0 6px 24px rgba(244,63,94,.38);transform:translateY(-1px)}
+.priv-strip{display:flex;align-items:center;gap:8px;padding:11px 15px;border-radius:12px;
+  background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac}
+.priv-strip span{font-size:11px;color:#166534}
+
+/* UPLOAD */
+#v-upload{width:100%;display:none;flex-direction:column;gap:16px}
+.hero{text-align:center;margin-bottom:24px;animation:riseIn .6s cubic-bezier(.16,1,.3,1) both}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:99px;
+  background:var(--blush);border:1px solid var(--rose-pale);
+  font-size:11px;font-weight:600;color:var(--rose);margin-bottom:12px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--rose);animation:pulse 2s infinite}
+.hero h2{font-size:clamp(21px,5.2vw,30px);font-weight:700;line-height:1.35;
+  color:var(--ink);letter-spacing:-.03em}
+.hero h2 em{font-style:normal;font-weight:800;color:var(--rose)}
+.hero-sub{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.65}
+.upload-zone{width:100%;border-radius:22px;border:2px dashed var(--bdr);background:var(--white);
+  min-height:218px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .28s;position:relative;overflow:hidden;box-shadow:0 4px 24px var(--sh2)}
+.upload-zone::before{content:'';position:absolute;inset:0;opacity:.4;
+  background-image:radial-gradient(circle,var(--rose-pale) 1px,transparent 1px);
+  background-size:22px 22px;pointer-events:none}
+.upload-zone:hover{border-color:var(--rose-l);box-shadow:0 8px 36px var(--sh);transform:translateY(-2px)}
+.upload-zone.drag{border-color:var(--rose);background:var(--blush);transform:scale(1.01)}
+.uz-inner{position:relative;z-index:1;display:flex;flex-direction:column;
+  align-items:center;gap:12px;padding:32px 20px;text-align:center;width:100%}
+.uz-ring{width:70px;height:70px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blush),var(--rose-pale));
+  border:1.5px solid var(--bdr);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px var(--sh);transition:transform .28s}
+.upload-zone:hover .uz-ring{transform:scale(1.1) rotate(-6deg)}
+.uz-title{font-size:19px;font-weight:700;color:var(--ink)}
+.uz-sub{font-size:13px;color:var(--muted);line-height:1.5}
+.uz-hint{font-size:11px;color:var(--muted2)}
+.uz-btn{padding:11px 28px;border-radius:99px;border:none;
+  background:linear-gradient(135deg,var(--rose),var(--rose-l));
+  color:#fff;font-family:var(--ff);font-size:13px;font-weight:600;cursor:pointer;
+  box-shadow:0 4px 16px var(--sh);transition:all .2s;margin-top:2px}
+.uz-btn:hover{box-shadow:0 6px 24px rgba(244,63,94,.36);transform:translateY(-1px)}
+.preview-wrap{position:relative;z-index:1;width:100%;
+  display:flex;align-items:center;justify-content:center;padding:14px}
+.preview-wrap img{max-height:200px;max-width:100%;object-fit:contain;
+  border-radius:12px;box-shadow:0 4px 18px var(--sh2)}
+.priv-note{display:flex;align-items:flex-start;gap:9px;padding:11px 15px;border-radius:13px;
+  background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;width:100%}
+.priv-note p{color:#166534;font-size:11.5px;line-height:1.6}
+.priv-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.priv-card{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 8px;
+  border-radius:16px;background:var(--white);border:1.5px solid var(--bdr2);
+  text-align:center;box-shadow:0 2px 10px var(--sh2)}
+.pc-lbl{font-size:11px;font-weight:700}
+.pc-dsc{font-size:10px;color:var(--muted);line-height:1.4}
+.cg{color:#16a34a}.cb{color:#2563eb}.cr{color:var(--rose)}
+
+/* ANALYZING */
+#v-analyzing{width:100%;display:none;flex-direction:column;gap:16px}
+.an-box{width:100%;min-height:218px;border-radius:22px;border:2px dashed var(--bdr);
+  background:var(--white);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;box-shadow:0 4px 24px var(--sh2)}
+.spin-wrap{position:relative;width:66px;height:66px}
+.spin-track{position:absolute;inset:0;border-radius:50%;border:3px solid var(--rose-pale)}
+.spin-arc{position:absolute;inset:0;border-radius:50%;border:3px solid transparent;
+  border-top-color:var(--rose);animation:spin 1s linear infinite}
+.spin-core{position:absolute;inset:10px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blush),var(--rose-pale));
+  display:flex;align-items:center;justify-content:center;animation:breathe 2s ease-in-out infinite}
+.an-label{font-size:18px;font-weight:700;color:var(--ink)}
+.an-dots{display:flex;gap:5px;margin-top:2px}
+.an-dot{width:7px;height:7px;border-radius:50%;background:var(--rose-ll);animation:bounce .9s ease infinite}
+.an-dot:nth-child(2){animation-delay:.18s}.an-dot:nth-child(3){animation-delay:.36s}
+
+/* RESULT */
+#v-result{width:100%;display:none;flex-direction:column;gap:14px}
+.res-title{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.03em}
+.canvas-card{width:100%;border-radius:22px;overflow:hidden;background:#f0eaec;
+  border:1.5px solid var(--bdr);box-shadow:0 6px 28px var(--sh2);position:relative}
+canvas{width:100%;height:auto;display:block}
+.legend{position:absolute;bottom:10px;left:10px;display:flex;gap:7px}
+.leg{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;
+  background:rgba(255,255,255,.9);backdrop-filter:blur(4px);box-shadow:0 2px 8px var(--sh2)}
+.leg-line{width:16px;height:2px;border-radius:2px}
+.leg-txt{font-size:10.5px;font-weight:600;color:var(--ink2)}
+.g-toggle{display:flex;gap:8px;width:100%}
+.gtog{flex:1;padding:9px 6px;border-radius:13px;border:1.5px solid var(--bdr);
+  background:var(--white);font-family:var(--ff);font-size:12px;font-weight:600;
+  color:var(--muted);cursor:pointer;transition:all .2s;box-shadow:0 2px 8px var(--sh2)}
+.gtog.boy{border-color:#93c5fd;background:linear-gradient(135deg,#eff6ff,#dbeafe);
+  color:#1d4ed8;box-shadow:0 4px 14px rgba(59,130,246,.2)}
+.gtog.girl{border-color:var(--rose-l);background:linear-gradient(135deg,var(--blush),var(--blush2));
+  color:var(--rose);box-shadow:0 4px 14px var(--sh)}
+.pred-card{border-radius:22px;border:1.5px solid;padding:20px 18px;transition:all .28s}
+.pred-card.boy{background:linear-gradient(135deg,#f0f9ff,#dbeafe);border-color:#93c5fd}
+.pred-card.girl{background:linear-gradient(135deg,var(--blush),var(--blush2));border-color:var(--rose-l)}
+.pred-row{display:flex;align-items:flex-start;justify-content:space-between}
+.pred-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:5px}
+.pred-emoji{font-size:34px;line-height:1}
+.pred-name{display:flex;align-items:center;gap:10px}
+.pred-text{font-size:26px;font-weight:800;letter-spacing:-.03em}
+.pred-text.boy{color:#1d4ed8}.pred-text.girl{color:var(--rose)}
+.pred-pct{font-size:26px;font-weight:800}
+.pred-pct.boy{color:#1d4ed8}.pred-pct.girl{color:var(--rose)}
+.prob-track{margin-top:16px;height:6px;border-radius:99px;
+  background:rgba(255,255,255,.65);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.08)}
+.prob-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.prob-fill.boy{background:linear-gradient(90deg,#60a5fa,#3b82f6)}
+.prob-fill.girl{background:linear-gradient(90deg,var(--rose-l),var(--rose))}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{border-radius:16px;background:var(--white);border:1.5px solid var(--bdr2);
+  padding:14px;box-shadow:0 2px 10px var(--sh2)}
+.stat.full{grid-column:1/-1}
+.stat-lbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
+.conf-pill{display:inline-block;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700}
+.conf-high{background:#dcfce7;color:#15803d}
+.conf-med{background:#fef9c3;color:#a16207}
+.conf-low{background:#fee2e2;color:#dc2626}
+.info-row{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:13px;
+  background:var(--white);border:1.5px solid var(--bdr2);box-shadow:0 2px 10px var(--sh2)}
+.info-row p{font-size:12px;color:var(--muted);line-height:1.65}
+.reason-card{border-radius:16px;background:var(--white);border:1.5px solid var(--bdr2);
+  padding:16px;box-shadow:0 2px 10px var(--sh2)}
+.reason-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:8px}
+.reason-txt{font-size:13px;color:var(--ink2);line-height:1.75}
+.reset-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--white);
+  color:var(--ink3);font-family:var(--ff);font-size:13px;font-weight:600;cursor:pointer;
+  box-shadow:0 2px 10px var(--sh2);transition:all .2s}
+.reset-btn:hover{border-color:var(--rose-l);color:var(--rose);transform:translateY(-1px)}
+
+/* FOOTER */
+footer{position:sticky;bottom:0;z-index:100;background:rgba(255,255,255,.9);
+  border-top:1px solid var(--bdr2);backdrop-filter:blur(18px);padding:9px 18px}
+.foot-inner{max-width:480px;margin:0 auto;text-align:center}
+.foot-credit{font-size:11px;font-weight:700;color:var(--rose);margin-bottom:3px}
+.foot-credit a{color:var(--rose);text-decoration:none}
+.foot-disc{font-size:10.5px;color:var(--muted);line-height:1.65}
+
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+</style>
+</head>
+<body>
+<div class="petal p1"></div><div class="petal p2"></div>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔬</div>
+    <div>
+      <div class="logo-name">Nub<b>Scope</b></div>
+      <div class="logo-sub" id="hdr-sub">NUB THEORY GENDER PREDICTOR</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <button class="key-badge" onclick="goOnboard()">
+      <span class="key-dot" id="keyDot"></span>
+      <span id="keyLabel">API 키</span>
+    </button>
+    <div class="lang-wrap">
+      <button class="lang-btn" id="langBtn" onclick="toggleLang()">
+        <span id="langFlag">🇰🇷</span><span id="langName">한국어</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="lang-menu" id="langMenu">
+        <div class="lang-menu-hd" id="lm-hd">언어 선택</div>
+        <button class="lang-opt active" onclick="setLang('ko','🇰🇷','한국어',this)"><span>🇰🇷</span>한국어<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+        <button class="lang-opt" onclick="setLang('en','🇺🇸','English',this)"><span>🇺🇸</span>English<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+        <button class="lang-opt" onclick="setLang('zh','🇨🇳','中文',this)"><span>🇨🇳</span>中文<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+        <button class="lang-opt" onclick="setLang('ja','🇯🇵','日本語',this)"><span>🇯🇵</span>日本語<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+        <button class="lang-opt" onclick="setLang('fr','🇫🇷','Français',this)"><span>🇫🇷</span>Français<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+        <button class="lang-opt" onclick="setLang('es','🇪🇸','Español',this)"><span>🇪🇸</span>Español<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Tabs (hidden during onboarding) -->
+  <div class="tabs" id="tabsRow" style="display:none">
+    <button class="tab" id="tab-upload"    onclick="showView('upload')">📤 <span id="t-up">업로드</span></button>
+    <button class="tab" id="tab-analyzing" onclick="showView('analyzing')">⏳ <span id="t-an">분석중</span></button>
+    <button class="tab" id="tab-result"    onclick="showView('result')">📊 <span id="t-re">결과</span></button>
+  </div>
+
+  <!-- ONBOARDING -->
+  <div id="v-onboard">
+    <div class="ob-card">
+      <div class="ob-icon">🔬</div>
+      <div class="ob-title">NubScope</div>
+      <div class="ob-desc" id="ob-desc">초음파 사진으로 AI가 태아 성별을 예측합니다<br>시작하려면 Anthropic API 키를 입력하세요</div>
+      <div class="ob-lbl" id="ob-lbl">🔑 API 키 입력</div>
+      <div class="ob-hint" id="ob-hint">키는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>에서 무료 발급하세요.</div>
+      <input class="ob-input" id="ob-input" type="password" placeholder="sk-ant-api03-..."/>
+      <div class="ob-err" id="ob-err">올바른 API 키를 입력해주세요 (sk- 로 시작)</div>
+      <button class="ob-submit" id="ob-submit" onclick="submitKey()">시작하기 →</button>
+    </div>
+    <div class="priv-strip">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" style="flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      <span id="priv-strip-txt">키는 이 기기의 브라우저 로컬 저장소에만 보관됩니다</span>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div id="v-upload">
+    <div class="hero">
+      <div class="eyebrow"><span class="dot"></span><span id="ey-txt">AI 기반 · Nub Theory 분석</span></div>
+      <h2 id="hero-h2">AI가 초음파 사진의<br><em>생식기 돌기 각도</em>를 분석합니다</h2>
+      <p class="hero-sub" id="hero-sub">이미지를 업로드하면 척추와 돌기선의 각도를 측정해 성별을 예측합니다</p>
+    </div>
+    <div class="upload-zone" id="dropzone"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)"
+      onclick="document.getElementById('fi').click()">
+      <div class="uz-inner" id="uz-idle">
+        <div class="uz-ring">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#f43f5e" stroke-width="1.8" stroke-linecap="round">
+            <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+          </svg>
+        </div>
+        <div class="uz-title" id="uz-title">초음파 사진 업로드</div>
+        <div class="uz-sub" id="uz-sub">드래그 앤 드롭 또는 클릭하여 선택</div>
+        <div class="uz-hint" id="uz-hint">JPG, PNG, WebP · 최대 10MB</div>
+        <button class="uz-btn" id="uz-btn" onclick="event.stopPropagation();document.getElementById('fi').click()">파일 선택</button>
+      </div>
+      <div class="preview-wrap" id="uz-preview" style="display:none">
+        <img id="preview-img" src="" alt="preview"/>
+      </div>
+      <input type="file" id="fi" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleFile(this.files[0])"/>
+    </div>
+    <div class="priv-note">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      <p id="priv-note-txt">📵 이미지는 분석 후 즉시 삭제되며 서버에 저장되지 않습니다</p>
+    </div>
+    <div class="priv-bar">
+      <div class="priv-card"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16a34a" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg><div class="pc-lbl cg" id="pc1l">제로 스토리지</div><div class="pc-dsc" id="pc1d">RAM 처리 후 즉시 삭제</div></div>
+      <div class="priv-card"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="23" y2="14"/><line x1="23" y1="8" x2="17" y2="14"/></svg><div class="pc-lbl cb" id="pc2l">비로그인</div><div class="pc-dsc" id="pc2d">회원가입 없이 즉시 사용</div></div>
+      <div class="priv-card"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f43f5e" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg><div class="pc-lbl cr" id="pc3l">추적 없음</div><div class="pc-dsc" id="pc3d">쿠키·분석 도구 없음</div></div>
+    </div>
+  </div>
+
+  <!-- ANALYZING -->
+  <div id="v-analyzing">
+    <div class="an-box">
+      <div class="spin-wrap">
+        <div class="spin-track"></div><div class="spin-arc"></div>
+        <div class="spin-core">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f43f5e" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div class="an-label" id="an-label">AI 분석 중…</div>
+        <div class="an-dots"><div class="an-dot"></div><div class="an-dot"></div><div class="an-dot"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="v-result">
+    <div class="res-title" id="res-title">분석 결과</div>
+    <div class="canvas-card">
+      <canvas id="cvs" width="480" height="300"></canvas>
+      <div class="legend">
+        <div class="leg"><div class="leg-line" style="background:#3b82f6"></div><span class="leg-txt" id="leg-s">척추선</span></div>
+        <div class="leg"><div class="leg-line" style="background:#f43f5e"></div><span class="leg-txt" id="leg-n">돌기선</span></div>
+      </div>
+    </div>
+    <div class="g-toggle">
+      <button class="gtog" id="gbtn-boy"  onclick="switchG('boy')">👦 <span id="gbt-boy">남아 결과</span></button>
+      <button class="gtog" id="gbtn-girl" onclick="switchG('girl')">👧 <span id="gbt-girl">여아 결과</span></button>
+    </div>
+    <div class="pred-card boy" id="predCard">
+      <div class="pred-row">
+        <div>
+          <div class="pred-lbl" id="pred-lg">예측 성별</div>
+          <div class="pred-name">
+            <span class="pred-emoji" id="predEmoji">👦</span>
+            <span class="pred-text boy" id="predText">남아</span>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="pred-lbl" id="pred-lp">통계 확률</div>
+          <div class="pred-pct boy" id="predPct">—</div>
+        </div>
+      </div>
+      <div class="prob-track"><div class="prob-fill boy" id="probFill" style="width:0%"></div></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-lbl" id="sl-angle">측정 각도</div><div class="stat-val" id="statAngle">—</div></div>
+      <div class="stat"><div class="stat-lbl" id="sl-conf">신뢰도</div><span class="conf-pill conf-med" id="statConf">—</span></div>
+      <div class="stat full"><div class="stat-lbl" id="sl-weeks">임신 주수 추정</div><div class="stat-val" id="statWeeks" style="font-size:18px">—</div></div>
+    </div>
+    <div class="info-row">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#b07080" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p id="nub-info">각도 30° 이상 → 남아, 30° 미만 → 여아 (통계적 경향)</p>
+    </div>
+    <div class="reason-card">
+      <div class="reason-lbl" id="res-dl">분석 세부 내용</div>
+      <p class="reason-txt" id="reasonTxt">—</p>
+    </div>
+    <button class="reset-btn" onclick="resetAll()">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.93"/></svg>
+      <span id="retry-txt">다시 분석하기</span>
+    </button>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-inner">
+    <div class="foot-credit">제작자 : <a href="https://wevwev.tistory.com" target="_blank" rel="noopener">wevwev.tistory.com</a></div>
+    <div class="foot-disc" id="disc-txt">⚕️ 본 서비스는 오락 목적으로만 제공되며, 의학적 진단이 아닙니다. 정확한 성별 확인은 반드시 산부인과 전문의와 상담하시기 바랍니다.</div>
+  </div>
+</footer>
+</div>
+
+<script>
+/* ── TRANSLATIONS ── */
+const T={
+  ko:{hdrSub:'NUB THEORY 성별 예측기',lmHd:'언어 선택',obDesc:'초음파 사진으로 AI가 태아 성별을 예측합니다<br>시작하려면 Anthropic API 키를 입력하세요',obLbl:'🔑 API 키 입력',obHint:'키는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>에서 무료 발급하세요.',obSubmit:'시작하기 →',obErr:'올바른 API 키를 입력해주세요 (sk- 로 시작)',privStrip:'키는 이 기기의 브라우저 로컬 저장소에만 보관됩니다',keyLabel:'API 키',eyTxt:'AI 기반 · Nub Theory 분석',heroH2:'AI가 초음파 사진의<br><em>생식기 돌기 각도</em>를 분석합니다',heroSub:'이미지를 업로드하면 척추와 돌기선의 각도를 측정해 성별을 예측합니다',uzTitle:'초음파 사진 업로드',uzSub:'드래그 앤 드롭 또는 클릭하여 선택',uzHint:'JPG, PNG, WebP · 최대 10MB',uzBtn:'파일 선택',privNote:'📵 이미지는 분석 후 즉시 삭제되며 서버에 저장되지 않습니다',pc1l:'제로 스토리지',pc1d:'RAM 처리 후 즉시 삭제',pc2l:'비로그인',pc2d:'회원가입 없이 즉시 사용',pc3l:'추적 없음',pc3d:'쿠키·분석 도구 없음',anLabel:'AI 분석 중…',resTitle:'분석 결과',legS:'척추선',legN:'돌기선',gbtBoy:'남아 결과',gbtGirl:'여아 결과',predLg:'예측 성별',predLp:'통계 확률',slAngle:'측정 각도',slConf:'신뢰도',slWeeks:'임신 주수 추정',confH:'높음',confM:'보통',confL:'낮음',nubInfo:'각도 30° 이상 → 남아, 30° 미만 → 여아 (통계적 경향)',resDl:'분석 세부 내용',retryTxt:'다시 분석하기',boy:'남아',girl:'여아',disc:'⚕️ 본 서비스는 오락 목적으로만 제공되며, 의학적 진단이 아닙니다. 정확한 성별 확인은 반드시 산부인과 전문의와 상담하시기 바랍니다.',tUp:'업로드',tAn:'분석중',tRe:'결과'},
+  en:{hdrSub:'NUB THEORY GENDER PREDICTOR',lmHd:'Select Language',obDesc:"AI predicts fetal gender from your ultrasound<br>Enter your Anthropic API key to begin",obLbl:'🔑 Enter API Key',obHint:'Your key is stored only in this browser, never sent to a server.<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> — get a free key.',obSubmit:'Get Started →',obErr:'Please enter a valid key (starts with sk-)',privStrip:"Key stored only in this browser's localStorage",keyLabel:'API Key',eyTxt:'AI-Powered · Nub Theory Analysis',heroH2:'AI analyzes the <em>genital tubercle angle</em><br>in your ultrasound',heroSub:"Upload your scan and we'll measure the nub angle to predict gender",uzTitle:'Upload Ultrasound Image',uzSub:'Drag & drop or click to select',uzHint:'JPG, PNG, WebP · Max 10MB',uzBtn:'Choose File',privNote:'📵 Images are never stored — deleted immediately after analysis',pc1l:'Zero Storage',pc1d:'RAM only, never saved',pc2l:'No Login',pc2d:'Instant use, no signup',pc3l:'No Tracking',pc3d:'No cookies or analytics',anLabel:'AI Analyzing…',resTitle:'Analysis Result',legS:'Spine Line',legN:'Nub Line',gbtBoy:'Boy Result',gbtGirl:'Girl Result',predLg:'Gender Prediction',predLp:'Statistical Probability',slAngle:'Measured Angle',slConf:'Confidence',slWeeks:'Gestational Week',confH:'High',confM:'Medium',confL:'Low',nubInfo:'Angle ≥30° → Boy,  <30° → Girl  (statistical tendency)',resDl:'Analysis Details',retryTxt:'Analyze Again',boy:'Boy',girl:'Girl',disc:'⚕️ For entertainment only. Not medical advice. Consult a qualified OB/GYN for accurate gender determination.',tUp:'Upload',tAn:'Analyzing',tRe:'Result'},
+  zh:{hdrSub:'NUB理论性别预测',lmHd:'选择语言',obDesc:'AI通过超声波图像预测胎儿性别<br>请输入Anthropic API密钥开始',obLbl:'🔑 输入API密钥',obHint:'密钥仅存储在此浏览器中，不会发送到服务器。<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>免费获取。',obSubmit:'开始使用 →',obErr:'请输入有效的API密钥（以sk-开头）',privStrip:'密钥仅保存在此设备的浏览器本地存储中',keyLabel:'API密钥',eyTxt:'AI驱动 · 角度法分析',heroH2:'AI分析超声波中的<br><em>生殖结节角度</em>',heroSub:'上传图像，我们将测量结节角度预测性别',uzTitle:'上传超声波图像',uzSub:'拖放或点击选择文件',uzHint:'JPG、PNG、WebP · 最大10MB',uzBtn:'选择文件',privNote:'📵 图像不会存储 — 分析后立即删除',pc1l:'零存储',pc1d:'仅在RAM中处理',pc2l:'无需登录',pc2d:'无需注册即可使用',pc3l:'无跟踪',pc3d:'无Cookie或分析工具',anLabel:'AI分析中…',resTitle:'分析结果',legS:'脊柱线',legN:'结节线',gbtBoy:'男孩结果',gbtGirl:'女孩结果',predLg:'性别预测',predLp:'统计概率',slAngle:'测量角度',slConf:'置信度',slWeeks:'孕周估计',confH:'高',confM:'中',confL:'低',nubInfo:'角度≥30° → 男孩，<30° → 女孩（统计趋势）',resDl:'分析详情',retryTxt:'重新分析',boy:'男孩',girl:'女孩',disc:'⚕️ 本服务仅供娱乐，不构成医疗诊断。请咨询妇产科医生。',tUp:'上传',tAn:'分析中',tRe:'结果'},
+  ja:{hdrSub:'ナブ理論 性別予測',lmHd:'言語を選択',obDesc:'AIが超音波で胎児の性別を予測します<br>APIキーを入力して開始してください',obLbl:'🔑 APIキーを入力',obHint:'キーはこのブラウザにのみ保存されます。<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>で無料発行。',obSubmit:'始める →',obErr:'有効なAPIキーを入力してください（sk-で始まる）',privStrip:'キーはこのデバイスのブラウザにのみ保管されます',keyLabel:'APIキー',eyTxt:'AI搭載 · ナブ理論分析',heroH2:'AIが超音波の<em>生殖結節の角度</em>を<br>分析します',heroSub:'画像をアップロードすると角度を測定して性別を予測します',uzTitle:'超音波画像をアップロード',uzSub:'ドラッグ＆ドロップまたはクリック',uzHint:'JPG・PNG・WebP · 最大10MB',uzBtn:'ファイルを選択',privNote:'📵 画像は保存されません — 分析後すぐに削除',pc1l:'ゼロストレージ',pc1d:'RAMのみで処理',pc2l:'ログイン不要',pc2d:'登録なしで使用',pc3l:'追跡なし',pc3d:'Cookie不使用',anLabel:'AI分析中…',resTitle:'分析結果',legS:'脊椎ライン',legN:'突起ライン',gbtBoy:'男の子',gbtGirl:'女の子',predLg:'性別予測',predLp:'統計的確率',slAngle:'測定角度',slConf:'信頼度',slWeeks:'妊娠週数',confH:'高',confM:'中',confL:'低',nubInfo:'角度30°以上 → 男の子、30°未満 → 女の子',resDl:'分析詳細',retryTxt:'再分析',boy:'男の子',girl:'女の子',disc:'⚕️ エンターテインメント目的のみ。医療診断ではありません。',tUp:'アップロード',tAn:'分析中',tRe:'結果'},
+  fr:{hdrSub:'PRÉDICTION · THÉORIE NUB',lmHd:'Choisir la langue',obDesc:"L'IA prédit le sexe du bébé depuis l'échographie<br>Entrez votre clé API Anthropic pour commencer",obLbl:"🔑 Entrer la clé API",obHint:'La clé est stockée uniquement dans ce navigateur.<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> — clé gratuite.',obSubmit:'Commencer →',obErr:'Veuillez entrer une clé valide (commence par sk-)',privStrip:"Clé stockée uniquement dans le localStorage de ce navigateur",keyLabel:'Clé API',eyTxt:'IA · Analyse Théorie Nub',heroH2:"L'IA analyse <em>l'angle du tubercule génital</em><br>sur votre échographie",heroSub:"Téléchargez votre image et nous mesurerons l'angle",uzTitle:'Télécharger une échographie',uzSub:'Glisser-déposer ou cliquer',uzHint:'JPG, PNG, WebP · Max 10 Mo',uzBtn:'Choisir',privNote:'📵 Images jamais stockées — supprimées immédiatement',pc1l:'Zéro stockage',pc1d:'RAM seulement',pc2l:'Sans compte',pc2d:'Utilisation immédiate',pc3l:'Sans suivi',pc3d:'Pas de cookies',anLabel:'Analyse IA en cours…',resTitle:'Résultat',legS:'Vertèbre',legN:'Tubercule',gbtBoy:'Garçon',gbtGirl:'Fille',predLg:'Prédiction',predLp:'Probabilité',slAngle:'Angle',slConf:'Confiance',slWeeks:'Semaine',confH:'Élevée',confM:'Moyenne',confL:'Faible',nubInfo:'Angle ≥30° → Garçon,  <30° → Fille',resDl:'Détails',retryTxt:'Analyser à nouveau',boy:'Garçon',girl:'Fille',disc:"⚕️ Divertissement uniquement. Consultez un gynécologue qualifié.",tUp:'Télécharger',tAn:'Analyse',tRe:'Résultat'},
+  es:{hdrSub:'PREDICCIÓN · TEORÍA NUB',lmHd:'Seleccionar idioma',obDesc:'La IA predice el género fetal desde tu ecografía<br>Ingresa tu clave API de Anthropic para empezar',obLbl:'🔑 Ingresar clave API',obHint:'La clave se almacena solo en este navegador.<br><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> — clave gratis.',obSubmit:'Comenzar →',obErr:'Ingresa una clave válida (comienza con sk-)',privStrip:'Clave guardada solo en el localStorage de este navegador',keyLabel:'Clave API',eyTxt:'IA · Análisis Teoría Nub',heroH2:'La IA analiza el <em>ángulo del tubérculo genital</em><br>en tu ecografía',heroSub:'Sube tu imagen y mediremos el ángulo para predecir el género',uzTitle:'Subir imagen de ecografía',uzSub:'Arrastra y suelta o haz clic',uzHint:'JPG, PNG, WebP · Máx. 10 MB',uzBtn:'Elegir',privNote:'📵 Las imágenes nunca se almacenan — eliminadas inmediatamente',pc1l:'Cero almacenamiento',pc1d:'Solo en RAM',pc2l:'Sin registro',pc2d:'Uso inmediato',pc3l:'Sin rastreo',pc3d:'Sin cookies',anLabel:'Analizando con IA…',resTitle:'Resultado',legS:'Columna',legN:'Tubérculo',gbtBoy:'Niño',gbtGirl:'Niña',predLg:'Predicción',predLp:'Probabilidad',slAngle:'Ángulo',slConf:'Confianza',slWeeks:'Semana',confH:'Alta',confM:'Media',confL:'Baja',nubInfo:'Ángulo ≥30° → Niño,  <30° → Niña',resDl:'Detalles',retryTxt:'Analizar de nuevo',boy:'Niño',girl:'Niña',disc:'⚕️ Solo entretenimiento. Consulte a un ginecólogo calificado.',tUp:'Subir',tAn:'Analizando',tRe:'Resultado'}
+};
+
+/* ── STATE ── */
+let curLang='ko', curGender='boy', uploadedImg=null, aiVecs=null;
+
+/* ── API KEY ── */
+const getKey=()=>localStorage.getItem('ns_k')||'';
+const setKey=k=>localStorage.setItem('ns_k',k.trim());
+const clearKey=()=>localStorage.removeItem('ns_k');
+
+function updateKeyBadge(){
+  document.getElementById('keyDot').className='key-dot'+(getKey().startsWith('sk-')?' ok':'');
+  document.getElementById('keyLabel').textContent=T[curLang].keyLabel;
+}
+function goOnboard(){
+  document.getElementById('tabsRow').style.display='none';
+  ['upload','analyzing','result'].forEach(v=>{ document.getElementById('v-'+v).style.display='none'; });
+  document.getElementById('v-onboard').style.display='flex';
+  document.getElementById('ob-input').value=getKey();
+  document.getElementById('ob-err').style.display='none';
+}
+function submitKey(){
+  const val=document.getElementById('ob-input').value.trim();
+  if(!val.startsWith('sk-')){ document.getElementById('ob-err').style.display='block'; return; }
+  setKey(val);
+  document.getElementById('ob-err').style.display='none';
+  document.getElementById('v-onboard').style.display='none';
+  updateKeyBadge();
+  showView('upload');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&document.getElementById('v-onboard').style.display!=='none') submitKey(); });
+
+/* ── LANGUAGE ── */
+function applyLang(l){
+  const t=T[l];
+  const s=(id,v,html=false)=>{ const el=document.getElementById(id); if(el){html?el.innerHTML=v:el.textContent=v;}};
+  s('hdr-sub',t.hdrSub); s('lm-hd',t.lmHd);
+  s('ob-desc',t.obDesc,true); s('ob-lbl',t.obLbl);
+  s('ob-hint',t.obHint,true); s('ob-submit',t.obSubmit);
+  s('ob-err',t.obErr); s('priv-strip-txt',t.privStrip);
+  s('ey-txt',t.eyTxt); s('hero-h2',t.heroH2,true); s('hero-sub',t.heroSub);
+  s('uz-title',t.uzTitle); s('uz-sub',t.uzSub); s('uz-hint',t.uzHint); s('uz-btn',t.uzBtn);
+  s('priv-note-txt',t.privNote);
+  s('pc1l',t.pc1l); s('pc1d',t.pc1d); s('pc2l',t.pc2l); s('pc2d',t.pc2d); s('pc3l',t.pc3l); s('pc3d',t.pc3d);
+  s('an-label',t.anLabel); s('res-title',t.resTitle);
+  s('leg-s',t.legS); s('leg-n',t.legN);
+  s('gbt-boy',t.gbtBoy); s('gbt-girl',t.gbtGirl);
+  s('pred-lg',t.predLg); s('pred-lp',t.predLp);
+  s('sl-angle',t.slAngle); s('sl-conf',t.slConf); s('sl-weeks',t.slWeeks);
+  s('nub-info',t.nubInfo); s('res-dl',t.resDl); s('retry-txt',t.retryTxt);
+  s('disc-txt',t.disc); s('t-up',t.tUp); s('t-an',t.tAn); s('t-re',t.tRe);
+  updateKeyBadge();
+}
+function toggleLang(){
+  const m=document.getElementById('langMenu'),b=document.getElementById('langBtn');
+  const o=m.classList.contains('show');
+  m.classList.toggle('show',!o); b.classList.toggle('open',!o);
+}
+function setLang(code,flag,name,el){
+  curLang=code;
+  document.getElementById('langFlag').textContent=flag;
+  document.getElementById('langName').textContent=name;
+  document.querySelectorAll('.lang-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('langMenu').classList.remove('show');
+  document.getElementById('langBtn').classList.remove('open');
+  applyLang(code);
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.lang-wrap')){ document.getElementById('langMenu').classList.remove('show'); document.getElementById('langBtn').classList.remove('open'); }});
+
+/* ── VIEWS ── */
+function showView(v){
+  ['upload','analyzing','result'].forEach(id=>{
+    document.getElementById('v-'+id).style.display=id===v?'flex':'none';
+  });
+  ['upload','analyzing','result'].forEach(id=>{
+    document.getElementById('tab-'+id).classList.toggle('active',id===v);
+  });
+  document.getElementById('tabsRow').style.display='flex';
+  document.getElementById('v-onboard').style.display='none';
+  if(v==='result') tryDraw(25);
+}
+function tryDraw(n){
+  if(uploadedImg&&uploadedImg.complete&&uploadedImg.naturalWidth>0){ drawCanvas(); animateBar(); }
+  else if(n>0) setTimeout(()=>tryDraw(n-1),80);
+  else { drawCanvas(); animateBar(); }
+}
+function resetAll(){
+  uploadedImg=null; aiVecs=null;
+  document.getElementById('uz-idle').style.display='flex';
+  document.getElementById('uz-preview').style.display='none';
+  document.getElementById('preview-img').src='';
+  document.getElementById('fi').value='';
+  showView('upload');
+}
+
+/* ── FILE ── */
+function handleDrop(e){ e.preventDefault(); document.getElementById('dropzone').classList.remove('drag'); handleFile(e.dataTransfer.files?.[0]); }
+function handleFile(file){
+  if(!file) return;
+  const key=getKey();
+  if(!key.startsWith('sk-')){ goOnboard(); return; }
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const url=ev.target.result;
+    document.getElementById('preview-img').src=url;
+    document.getElementById('uz-idle').style.display='none';
+    document.getElementById('uz-preview').style.display='flex';
+    const img=new Image();
+    img.onload=()=>{ uploadedImg=img; };
+    img.src=url;
+    showView('analyzing');
+    callClaude(key, url.split(',')[1], url.split(';')[0].split(':')[1]);
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── CLAUDE API ── */
+async function callClaude(apiKey,base64,mime){
+  const prompt=`You are an expert in Nub Theory fetal gender prediction from ultrasound images.
+Analyze this image:
+1. Locate the fetal spine (horizontal reference)
+2. Locate the genital tubercle (nub)
+3. Measure the angle between nub and spine
+Rule: Angle >= 30° = Boy, < 30° = Girl
+Return ONLY valid JSON, no markdown:
+{"prediction":"boy"|"girl"|"uncertain","angle":<number|null>,"probability":<0.0-1.0>,"confidence":"high"|"medium"|"low","gestationalWeekEstimate":"<string|null>","reasoning":"<1-2 sentences in Korean>","spineVector":{"x1":<0-1>,"y1":<0-1>,"x2":<0-1>,"y2":<0-1>}|null,"nubVector":{"x1":<0-1>,"y1":<0-1>,"x2":<0-1>,"y2":<0-1>}|null}
+Coordinates normalized 0.0-1.0 top-left origin.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1024,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mime,data:base64}},{type:'text',text:prompt}]}]})
+    });
+    if(res.status===401){ clearKey(); goOnboard(); document.getElementById('ob-err').textContent='API 키가 유효하지 않습니다. 다시 입력해주세요.'; document.getElementById('ob-err').style.display='block'; return; }
+    if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+    const data=await res.json();
+    const raw=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const r=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    applyResult(r); showView('result');
+  }catch(err){ console.error(err); showView('upload'); alert('분석 실패: '+err.message); }
+}
+
+/* ── APPLY RESULT ── */
+function applyResult(r){
+  const t=T[curLang], boy=r.prediction==='boy';
+  curGender=boy?'boy':'girl';
+  aiVecs={spine:r.spineVector,nub:r.nubVector,angle:r.angle};
+  document.getElementById('gbtn-boy').className='gtog'+(boy?' boy':'');
+  document.getElementById('gbtn-girl').className='gtog'+(!boy?' girl':'');
+  document.getElementById('predCard').className='pred-card '+curGender;
+  document.getElementById('predEmoji').textContent=boy?'👦':'👧';
+  document.getElementById('predText').textContent=boy?t.boy:t.girl;
+  document.getElementById('predText').className='pred-text '+curGender;
+  const pct=Math.round((r.probability||.5)*100);
+  document.getElementById('predPct').textContent=pct+'%';
+  document.getElementById('predPct').className='pred-pct '+curGender;
+  document.getElementById('probFill').className='prob-fill '+curGender;
+  document.getElementById('probFill').dataset.pct=pct+'%';
+  document.getElementById('statAngle').textContent=r.angle!=null?r.angle.toFixed(1)+'°':'—';
+  document.getElementById('statWeeks').textContent=r.gestationalWeekEstimate?'~'+r.gestationalWeekEstimate:'—';
+  document.getElementById('reasonTxt').textContent=r.reasoning||'—';
+  const cEl=document.getElementById('statConf');
+  cEl.className='conf-pill '+({high:'conf-high',medium:'conf-med',low:'conf-low'}[r.confidence]||'conf-med');
+  cEl.textContent=r.confidence==='high'?t.confH:r.confidence==='medium'?t.confM:t.confL;
+}
+
+/* ── GENDER TOGGLE ── */
+function switchG(g){
+  curGender=g; const boy=g==='boy';
+  document.getElementById('gbtn-boy').className='gtog'+(boy?' boy':'');
+  document.getElementById('gbtn-girl').className='gtog'+(!boy?' girl':'');
+  document.getElementById('predCard').className='pred-card '+g;
+  document.getElementById('predEmoji').textContent=boy?'👦':'👧';
+  document.getElementById('predText').className='pred-text '+g;
+  document.getElementById('predPct').className='pred-pct '+g;
+  document.getElementById('probFill').className='prob-fill '+g;
+  animateBar(); drawCanvas();
+}
+function animateBar(){
+  const f=document.getElementById('probFill');
+  const target=f.dataset.pct||'50%';
+  f.style.width='0%';
+  setTimeout(()=>{ f.style.width=target; },60);
+}
+
+/* ── CANVAS ── */
+function drawCanvas(){
+  const cv=document.getElementById('cvs'), ctx=cv.getContext('2d');
+  if(uploadedImg&&uploadedImg.naturalWidth>0){
+    const maxW=480,maxH=340,r=Math.min(maxW/uploadedImg.naturalWidth,maxH/uploadedImg.naturalHeight);
+    cv.width=Math.round(uploadedImg.naturalWidth*r);
+    cv.height=Math.round(uploadedImg.naturalHeight*r);
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.drawImage(uploadedImg,0,0,cv.width,cv.height);
+    ctx.fillStyle='rgba(0,0,0,.15)'; ctx.fillRect(0,0,cv.width,cv.height);
+  } else {
+    cv.width=480; cv.height=300; drawDemoUS(ctx,480,300);
+  }
+  drawAnnotations(ctx,cv.width,cv.height);
+}
+function drawDemoUS(ctx,W,H){
+  const bg=ctx.createRadialGradient(W/2,H/2,10,W/2,H/2,W*.65);
+  bg.addColorStop(0,'#1e2d1e'); bg.addColorStop(.7,'#0d180d'); bg.addColorStop(1,'#050c05');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<2200;i++){ const x=Math.random()*W,y=Math.random()*H,b=Math.random()*55; ctx.fillStyle=`rgba(${b*1.8},${b*2.2+30},${b},${Math.random()*.22})`; ctx.fillRect(x,y,1,1); }
+  ctx.save(); ctx.globalAlpha=.05; for(let y=0;y<H;y+=4){ctx.fillStyle='#fff';ctx.fillRect(0,y,W,1);} ctx.restore();
+}
+function drawAnnotations(ctx,W,H){
+  const ai=aiVecs, isBoy=curGender==='boy';
+  const spine=ai?.spine||{x1:.16,y1:.46,x2:.80,y2:.48};
+  const ang=(ai?.angle!=null)?ai.angle:(isBoy?32:18);
+  const rad=ang*Math.PI/180;
+  let nub;
+  if(ai?.nub){ nub=ai.nub; }
+  else{ const nx=.40,ny=.455,l=.19; nub={x1:nx,y1:ny,x2:nx+l*Math.cos(-rad),y2:ny+l*Math.sin(-rad)+(isBoy?-.02:.07)}; }
+  drawVec(ctx,W,H,spine,'#3b82f6','#93c5fd','SPINE');
+  drawVec(ctx,W,H,nub,'#f43f5e','#fda4af','NUB');
+  const cx=nub.x1*W,cy=nub.y1*H;
+  const spA=Math.atan2((spine.y2-spine.y1)*H,(spine.x2-spine.x1)*W);
+  const nbA=Math.atan2((nub.y2-nub.y1)*H,(nub.x2-nub.x1)*W);
+  ctx.save();
+  ctx.strokeStyle='rgba(255,238,40,.92)'; ctx.lineWidth=2; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.arc(cx,cy,38,nbA,spA); ctx.stroke(); ctx.setLineDash([]);
+  const lbl=ang.toFixed(1)+'°';
+  ctx.font='bold 13px Pretendard,sans-serif';
+  const mw=ctx.measureText(lbl).width;
+  ctx.fillStyle='rgba(0,0,0,.76)'; ctx.beginPath(); ctx.roundRect(cx+44,cy-14,mw+14,22,5); ctx.fill();
+  ctx.fillStyle='#ffe033'; ctx.fillText(lbl,cx+51,cy+3);
+  ctx.restore();
+}
+function drawVec(ctx,W,H,v,color,glow,label){
+  ctx.save();
+  ctx.shadowColor=glow; ctx.shadowBlur=10; ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(v.x1*W,v.y1*H); ctx.lineTo(v.x2*W,v.y2*H); ctx.stroke();
+  const a=Math.atan2((v.y2-v.y1)*H,(v.x2-v.x1)*W);
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.moveTo(v.x2*W,v.y2*H);
+  ctx.lineTo(v.x2*W-11*Math.cos(a-.45),v.y2*H-11*Math.sin(a-.45));
+  ctx.lineTo(v.x2*W-11*Math.cos(a+.45),v.y2*H-11*Math.sin(a+.45));
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0; ctx.font='bold 11px Pretendard,monospace';
+  const m=ctx.measureText(label);
+  ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(v.x1*W-2,v.y1*H-19,m.width+8,17);
+  ctx.fillStyle=color; ctx.fillText(label,v.x1*W+2,v.y1*H-6);
+  ctx.restore();
+}
+
+/* ── INIT ── */
+applyLang('ko');
+drawCanvas();
+if(getKey().startsWith('sk-')){ updateKeyBadge(); showView('upload'); }
+else { goOnboard(); }
+</script>
+</body>
+</html>
